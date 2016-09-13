@@ -11,12 +11,17 @@ define(function (require) {
 
     var nodeOpacityPath = ['itemStyle', 'normal', 'opacity'];
     var lineOpacityPath = ['lineStyle', 'normal', 'opacity'];
+    
+    var Echarts = require('../../echarts');
+    var clickGroup = false;
 
     function getItemOpacity(item, opacityPath) {
         return item.getVisual('opacity') || item.getModel().get(opacityPath);
     }
+    
+    
 
-    require('../../echarts').extendChartView({
+    Echarts.extendChartView({
 
         type: 'graph',
 
@@ -29,11 +34,25 @@ define(function (require) {
 
             group.add(symbolDraw.group);
             group.add(lineDraw.group);
+            
+            this._onClickDom = function(){
+              if(clickGroup){
+                  clickGroup = false;
+              }else{
+                  this._unfocusAll();
+                  this._selectNodeId = -1;
+              }
+            }.bind(this),
+            api.getDom().addEventListener('click',this._onClickDom);
+            
+            group.on('click',function(){
+              clickGroup = true;
+            })
 
             this._symbolDraw = symbolDraw;
             this._lineDraw = lineDraw;
             this._controller = controller;
-
+            this._selectNode = null;
             this._firstRender = true;
         },
 
@@ -67,6 +86,7 @@ define(function (require) {
             symbolDraw.updateData(data);
 
             var edgeData = seriesModel.getEdgeData();
+            
             lineDraw.updateData(edgeData);
 
             this._updateNodeAndLinkScale();
@@ -108,6 +128,10 @@ define(function (require) {
                     el.on('mouseover', this._focusNodeAdjacency, this);
                     el.on('mouseout', this._unfocusAll, this);
                 }
+                if(itemModel.get('focusNodeAdjacencyByClick')){
+                    el.on('click',this._focusNodeAdjacency, this);
+                }
+                
             }, this);
 
             var circularRotateLabel = seriesModel.get('layout') === 'circular' && seriesModel.get('circular.rotateLabel');
@@ -160,6 +184,7 @@ define(function (require) {
                     child.trigger('normal');
                     if (child.type !== 'group') {
                         child.setStyle('opacity', opacity * 0.1);
+                        child.silent=true;
                     }
                 });
             }
@@ -172,10 +197,22 @@ define(function (require) {
                     child.trigger('emphasis');
                     if (child.type !== 'group') {
                         child.setStyle('opacity', opacity);
+                        child.silent=false;
                     }
                 });
             }
+            
             if (dataIndex !== null && dataType !== 'edge') {
+                
+                var node = graph.getNodeByIndex(dataIndex);
+                if(this._selectNodeId == dataIndex){
+                    this._unfocusAll();
+                    this._selectNodeId = -1;
+                    return;
+                }
+                
+                this._selectNodeId = dataIndex;
+                
                 graph.eachNode(function (node) {
                     fadeOutItem(node, nodeOpacityPath);
                 });
@@ -183,7 +220,6 @@ define(function (require) {
                     fadeOutItem(edge, lineOpacityPath);
                 });
 
-                var node = graph.getNodeByIndex(dataIndex);
                 fadeInItem(node, nodeOpacityPath);
                 zrUtil.each(node.edges, function (edge) {
                     if (edge.dataIndex < 0) {
@@ -193,6 +229,8 @@ define(function (require) {
                     fadeInItem(edge.node1, nodeOpacityPath);
                     fadeInItem(edge.node2, nodeOpacityPath);
                 });
+                
+                
             }
         },
 
@@ -205,6 +243,7 @@ define(function (require) {
                     child.trigger('normal');
                     if (child.type !== 'group') {
                         child.setStyle('opacity', opacity);
+                        child.silent=false;
                     }
                 });
             });
@@ -214,6 +253,7 @@ define(function (require) {
                     child.trigger('normal');
                     if (child.type !== 'group') {
                         child.setStyle('opacity', opacity);
+                        child.silent=false;
                     }
                 });
             });
@@ -233,6 +273,8 @@ define(function (require) {
             })();
         },
 
+         
+        
         _updateController: function (seriesModel, api) {
             var controller = this._controller;
             var group = this.group;
@@ -314,6 +356,7 @@ define(function (require) {
         remove: function (ecModel, api) {
             this._symbolDraw && this._symbolDraw.remove();
             this._lineDraw && this._lineDraw.remove();
+            api.getDom().removeEventListener('click',onClickDom)
         }
     });
 });

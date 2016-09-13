@@ -333,6 +333,7 @@ define(function (require) {
                 textFont: textStyleHoverModel.getFont(),
                 fill: textStyleHoverModel.getTextColor() || defaultLabelColor
             };
+            label.__position = labelModel.get('position');
         }
         else {
             label.hoverStyle = {
