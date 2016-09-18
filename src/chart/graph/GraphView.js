@@ -14,6 +14,7 @@ define(function (require) {
     
     var Echarts = require('../../echarts');
     var clickGroup = false;
+    var onClickDom = null;
 
     function getItemOpacity(item, opacityPath) {
         return item.getVisual('opacity') || item.getModel().get(opacityPath);
@@ -24,26 +25,30 @@ define(function (require) {
     Echarts.extendChartView({
 
         type: 'graph',
+        
+        _onClickDom:null,
 
         init: function (ecModel, api) {
             var symbolDraw = new SymbolDraw();
             var lineDraw = new LineDraw();
             var group = this.group;
-
             var controller = new RoamController(api.getZr(), group);
 
             group.add(symbolDraw.group);
             group.add(lineDraw.group);
             
-            this._onClickDom = function(){
-              if(clickGroup){
-                  clickGroup = false;
-              }else{
-                  this._unfocusAll();
-                  this._selectNodeId = -1;
-              }
-            }.bind(this),
-            api.getDom().addEventListener('click',this._onClickDom);
+            if(!onClickDom){
+                onClickDom = function(){
+                  if(clickGroup){
+                      clickGroup = false;
+                  }else{
+                      this._unfocusAll();
+                      this._selectNodeId = -1;
+                  }
+                }.bind(this)
+            }
+            
+            api.getDom().addEventListener('click',onClickDom);
             
             group.on('click',function(){
               clickGroup = true;
@@ -356,7 +361,8 @@ define(function (require) {
         remove: function (ecModel, api) {
             this._symbolDraw && this._symbolDraw.remove();
             this._lineDraw && this._lineDraw.remove();
-            api.getDom().removeEventListener('click',onClickDom)
+            api.getDom().removeEventListener('click',onClickDom);
+            
         }
     });
 });
