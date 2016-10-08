@@ -38,22 +38,26 @@ define(function (require) {
                 // var edgeDataExtent = edgeData.getDataExtent('value');
                 var repulsion = forceModel.get('repulsion');
                 var edgeLength = forceModel.get('edgeLength');
-                if (!zrUtil.isArray(repulsion)) {
+                if (!zrUtil.isArray(repulsion)&&!zrUtil.isFunction(repulsion)) {
                     repulsion = [repulsion, repulsion];
                 }
                 if (!zrUtil.isArray(edgeLength)) {
                     edgeLength = [edgeLength, edgeLength];
                 }
-                // Larger value has smaller length
-                edgeLength = [edgeLength[1], edgeLength[0]];
-
-                var nodes = nodeData.mapArray('value', function (value, idx) {
+                var nodes = nodeData.mapArray( function (idx) {
                     var point = nodeData.getItemLayout(idx);
+                    var node = nodeData.getRawDataItem(idx)
                     // var w = numberUtil.linearMap(value, nodeDataExtent, [0, 50]);
-                    var rep = numberUtil.linearMap(value, nodeDataExtent, repulsion);
-                    if (isNaN(rep)) {
-                        rep = (repulsion[0] + repulsion[1]) / 2;
+                    var rep=null;
+                    if(zrUtil.isFunction(repulsion)){
+                        rep=repulsion.call(this,node)
+                    }else{
+                        rep = numberUtil.linearMap(node.value, nodeDataExtent, repulsion);
+                        if (isNaN(rep)) {
+                            rep = (repulsion[0] + repulsion[1]) / 2;
+                        }
                     }
+
                     return {
                         w: rep,
                         rep: rep,
@@ -78,7 +82,10 @@ define(function (require) {
                 var rect = coordSys.getBoundingRect();
                 var forceInstance = forceHelper(nodes, edges, {
                     rect: rect,
-                    gravity: forceModel.get('gravity')
+                    gravity: forceModel.get('gravity'),
+                    distanceMax:forceModel.get('distanceMax'),
+                    distanceMin:forceModel.get('distanceMin'),
+                    optimize:forceModel.get('optimize')
                 });
                 var oldStep = forceInstance.step;
                 forceInstance.step = function (cb) {
